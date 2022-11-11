@@ -1,3 +1,31 @@
+/*!
+ # formato
+
+Easily format numbers into string representation\
+Works for  integers (u8-u128 and i8-i128) and floats (f32, f64)\
+Allows you to specify location of thousands separator, number of decimals, different format for positive, negative and zero values. e.g.
+- `1,000,000`
+- `0012`
+- `(4 234.56)`
+
+Similar to numerical formatting in Excel and C#
+
+
+## Simple examples
+```rust
+use formato::{Formato,FormatOptions};
+assert_eq!("001", 1.formato("000"));
+assert_eq!("1,234", 1234.formato("#,###"));
+assert_eq!("1,234.00", 1234.formato("N2"));
+assert_eq!("(1,234)", (-1234).formato("#,##0 ;(#,##0);-"));
+
+let ops=FormatOptions::default()
+        .with_thousands(" ")
+        .with_decimal(",");
+assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00",&ops));
+
+ */
+
 mod calc;
 mod comps;
 mod impls;

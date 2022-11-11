@@ -8,7 +8,7 @@ homepage = "https://github.com/griccardos/formato/"
 repository =  "https://github.com/griccardos/formato/"
 readme = "README.md"
 keywords = ["number", "format","num-format","num_format"]
-categories = ["value-formatting","localization","internationalization","coding","parsing"]
+categories = ["value-formatting","localization","internationalization","accessibility","parsing"]
 
 [lib]
 name="formato"
