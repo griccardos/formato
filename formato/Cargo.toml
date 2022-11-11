@@ -1,0 +1,19 @@
+[package]
+name = "formato"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Convert numbers to string with customizable format"
+homepage = "https://github.com/griccardos/formato/"
+repository =  "https://github.com/griccardos/formato/"
+readme = "README.md"
+keywords = ["number", "format","num-format","num_format"]
+categories = ["value-formatting","localization","internationalization","coding","parsing"]
+
+[lib]
+name="formato"
+path="src/lib.rs"
+
+
+[dependencies]
+
