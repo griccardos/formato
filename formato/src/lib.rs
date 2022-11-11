@@ -16,7 +16,7 @@ Similar to numerical formatting in Excel and C#
 use formato::{Formato,FormatOptions};
 assert_eq!("001", 1.formato("000"));
 assert_eq!("1,234", 1234.formato("#,###"));
-assert_eq!("1,234.00", 1234.formato("N2"));
+assert_eq!("1,234.56", (1234.5632).formato("N2"));
 assert_eq!("(1,234)", (-1234).formato("#,##0 ;(#,##0);-"));
 
 let ops=FormatOptions::default()
