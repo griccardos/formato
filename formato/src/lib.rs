@@ -23,8 +23,8 @@ let ops=FormatOptions::default()
         .with_thousands(" ")
         .with_decimal(",");
 assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00",&ops));
-
- */
+```
+*/
 
 mod calc;
 mod comps;

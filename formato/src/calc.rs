@@ -3,10 +3,9 @@ use crate::{
     FormatOptions,
 };
 
-pub fn calc_format(comps: NumberComponents, mut format: &str, ops: &FormatOptions) -> String {
-    if format.is_empty() {
-        format = "#";
-    }
+///determine the format to used: builtin or custom
+/// builtin formats are converted to a custom format
+pub fn calc_format(comps: NumberComponents, format: &str, ops: &FormatOptions) -> String {
     //split into +;-;0
     let format = get_pos_neg_zero_format(format);
     let typ = get_format_type(&format);

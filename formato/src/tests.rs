@@ -188,3 +188,12 @@ fn readme() {
     assert_eq!("1", 1.formato("###"));
     assert_eq!("01", 1.formato("#00"));
 }
+
+#[test]
+fn blanks() {
+    assert_eq!("", 1.formato(""));
+    assert_eq!("", (1.1).formato(""));
+    assert_eq!("3", 1.formato("3")); //no placeholders, so output text
+    assert_eq!("K9", 1.formato("K9")); //incorrect builtin, so output text
+    assert_eq!("N1111", (1.2).formato("N1111")); //incorrect builtin, so output text
+}
