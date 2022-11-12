@@ -1,0 +1,14 @@
+group                     base/formato/               base/std/
+-----                     -------------               ---------
+f64 big decimal           4.15    610.1±1.59ns        1.00    147.0±1.21ns
+f64 big no decimal        6.73    476.2±2.66ns        1.00     70.7±0.04ns
+f64 small decimal         4.51    433.4±0.84ns        1.00     96.1±0.69ns
+f64 small no decimal      5.08    360.2±2.09ns        1.00     70.8±0.07ns
+no round                  5.34    551.3±0.05ns        1.00    103.3±0.07ns
+round                     9.51  1022.5±21.21ns        1.00    107.6±0.23ns
+usize big decimal         8.90    447.1±2.84ns        1.00     50.2±0.26ns
+usize big no decimal      10.76   444.6±2.75ns        1.00     41.3±0.19ns
+usize small decimal       8.63    397.7±1.40ns        1.00     46.1±0.04ns
+usize small no decimal    8.42    329.6±4.28ns        1.00     39.1±0.02ns
+
+4-11x slower than to_string()/format!()

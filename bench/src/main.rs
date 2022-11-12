@@ -12,9 +12,9 @@ fn main() {
         }
     }
     println!(
-        "Done in {:.2}s for {}/s or {}ms per number",
+        "Done in {:.2}s for {}/s or {:.1}ns per number",
         start.elapsed().as_secs_f32(),
         1000000f32 / start.elapsed().as_secs_f32(),
-        start.elapsed().as_secs_f32() / 1000000. * 1000000.
+        start.elapsed().as_secs_f32() / 1000000. * 1000000000.
     );
 }
