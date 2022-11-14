@@ -1,31 +1,237 @@
-use crate::{
-    comps::{NumberComponents, Sign},
-    FormatOptions,
-};
+use std::fmt::Display;
 
-///determine the format to used: builtin or custom
-/// builtin formats are converted to a custom format
-pub fn calc_format(comps: NumberComponents, format: &str, ops: &FormatOptions) -> String {
-    //split into +;-;0
-    let format = get_pos_neg_zero_format(format);
+use crate::FormatOptions;
+
+pub fn formato_to_string<T: Display>(num: T, format: &str, ops: &FormatOptions) -> String {
+    let mut value = format!("{num}");
+
+    //special cases dont have any formatting
+    match value.as_str() {
+        "NaN" => return "NaN".to_string(),
+        "-inf" => return "-inf".to_string(),
+        "inf" => return "inf".to_string(),
+        _ => {}
+    }
+
+    let sign = sign(&value);
+    if sign == Sign::Negative {
+        value = value.replace('-', "");
+    }
+
+    let pos_neg_zero = get_pos_neg_zero_format(format);
+    let must_add_neg = sign == Sign::Negative && pos_neg_zero.neg.is_none();
+    let format_to_use = calc_format(pos_neg_zero, &sign);
+    round(&mut value, &format_to_use);
+    let comps = get_int_decimal_parts(&value);
+    apply_format(&format_to_use, comps, ops, must_add_neg)
+}
+
+struct NumberComponents {
+    pub int: String,
+    pub decimal: String,
+}
+
+#[derive(PartialEq, Eq, Clone)]
+enum Sign {
+    Positive,
+    Negative,
+    Zero,
+}
+
+struct PosNegZero<'a> {
+    pub pos: &'a str,
+    pub neg: Option<&'a str>,
+    pub zero: Option<&'a str>,
+}
+
+fn get_int_decimal_parts(num: &str) -> NumberComponents {
+    let mut int_dec = num.split('.').take(2);
+
+    let int = int_dec.next().unwrap_or_default().to_string();
+    let decimal = int_dec.next().unwrap_or_default().to_string();
+
+    NumberComponents { int, decimal }
+}
+fn sign(val: &str) -> Sign {
+    if val.starts_with('-') {
+        Sign::Negative
+    } else if val == "0" {
+        Sign::Zero
+    } else {
+        Sign::Positive
+    }
+}
+
+fn round(val: &mut String, format: &str) {
+    let format_decimals = format
+        .chars()
+        .skip_while(|x| x != &'.')
+        .skip_while(|x| x == &'.')
+        .filter(|&x| x == '0' || x == '#')
+        .count();
+    let mut dec_point = 0;
+    let actual_decimals = val
+        .chars()
+        .enumerate()
+        .skip_while(|(i, x)| {
+            dec_point = *i;
+            x != &'.'
+        })
+        .skip_while(|(_, x)| x == &'.')
+        .count();
+
+    //no rounding required because too few decimals in actual
+    if actual_decimals <= format_decimals {
+        return;
+    }
+    let next_ch = val
+        .chars()
+        .nth(dec_point + format_decimals + 1)
+        .expect("actual_decimals > format_decimals");
+
+    //no rounding required as next char is <5
+    if ('0'..'5').contains(&next_ch) {
+        let mut new = (val[0..(dec_point + format_decimals + 1)]).to_string();
+        remove_trailing_zeros(&mut new);
+        *val = new;
+        return;
+    }
+
+    let mut result = String::with_capacity(val.len());
+    let chars = val
+        .chars()
+        .rev()
+        .skip(val.len() - dec_point - format_decimals - 1);
+    let mut has_carry = true;
+    let mut last_carry_pos = 0;
+    for (i, ch) in chars.enumerate() {
+        if has_carry && ('0'..='9').contains(&ch) {
+            let mut val = ch as u32 - '0' as u32;
+            val += 1;
+            if val == 10 {
+                result.insert(0, '0');
+                last_carry_pos = i + 1;
+            } else {
+                result.insert_str(0, &val.to_string());
+                has_carry = false;
+            }
+        } else {
+            result.insert(0, ch);
+        }
+    }
+    if has_carry {
+        result.insert(result.len() - last_carry_pos, '1');
+    }
+
+    if dec_point > 0 {
+        remove_trailing_zeros(&mut result);
+    }
+
+    *val = result;
+}
+
+fn remove_trailing_zeros(result: &mut String) {
+    let dec_point = result.find(|x| x == '.');
+    if dec_point.is_none() {
+        return;
+    }
+    let dec_point = dec_point.unwrap();
+    let len = result.len();
+
+    //remove trailing 0's (and optionally .)
+    let chars = result.chars();
+
+    let mut num_trailing_zeros = chars.rev().take_while(|x| x == &'0').count();
+
+    //get rid of trailing
+    if dec_point == len - num_trailing_zeros - 1 {
+        num_trailing_zeros += 1;
+    }
+
+    if num_trailing_zeros > 0 {
+        *result = result[0..result.len() - num_trailing_zeros].to_string();
+    }
+}
+
+enum FormatType {
+    Fixed { prec: u8 },  //F default 2
+    Number { prec: u8 }, //N default 2
+    Custom,
+}
+
+fn get_format_type(format: &PosNegZero) -> FormatType {
+    //if we have negative and/or zero then it is custom
+    if format.neg.is_some() || format.zero.is_some() {
+        return FormatType::Custom;
+    }
+
+    let format = format.pos;
+
+    if format.is_empty() {
+        return FormatType::Custom;
+    }
+
+    if format.len() > 2 {
+        return FormatType::Custom;
+    }
+
+    let mut chars = format.chars();
+    let first = chars.next();
+    let second = chars.next();
+    let second_num: Option<u8> = if let Some(pre) = second {
+        if ((pre as u32) < b'0' as u32) || ((pre as u32) > b'9' as u32) {
+            None //not valid
+        } else {
+            Some(pre as u8 - b'0')
+        }
+    } else {
+        Some(2) //default
+    };
+
+    match (first, second_num) {
+        (Some('N') | Some('n'), Some(prec)) => FormatType::Number { prec },
+        (Some('F') | Some('f'), Some(prec)) => FormatType::Fixed { prec },
+        _ => FormatType::Custom,
+    }
+}
+
+fn get_pos_neg_zero_format(format: &str) -> PosNegZero {
+    let spl: Vec<&str> = format.split(';').collect();
+
+    match spl.len() {
+        1 => PosNegZero {
+            pos: format,
+            neg: None,
+            zero: None,
+        },
+        2 => PosNegZero {
+            pos: spl[0],
+            neg: Some(spl[1]),
+            zero: None,
+        },
+        _ => PosNegZero {
+            pos: spl[0],
+            neg: Some(spl[1]),
+            zero: Some(spl[2]),
+        },
+    }
+}
+
+fn calc_format(format: PosNegZero, sign: &Sign) -> String {
     let typ = get_format_type(&format);
-
-    match typ {
-        FormatType::Number { prec } => custom(
-            (
-                &format!("#,##0{}", decimal_format_with_prec(prec)),
-                None,
-                None,
-            ),
-            comps,
-            ops,
+    let pos_neg_zero = match typ {
+        FormatType::Number { prec } => (
+            format!("#,##0{}", decimal_format_with_prec(prec)),
+            None,
+            None,
         ),
-        FormatType::Fixed { prec } => custom(
-            (&format!("0{}", decimal_format_with_prec(prec)), None, None),
-            comps,
-            ops,
-        ),
-        FormatType::Custom => custom(format, comps, ops),
+        FormatType::Fixed { prec } => (format!("0{}", decimal_format_with_prec(prec)), None, None),
+        FormatType::Custom => (format.pos.to_string(), format.neg, format.zero),
+    };
+    match (sign, &pos_neg_zero.0, pos_neg_zero.1, pos_neg_zero.2) {
+        (Sign::Negative, _, Some(neg), _) => neg.to_string(),
+        (Sign::Zero, _, _, Some(zero)) => zero.to_string(),
+        _ => pos_neg_zero.0,
     }
 }
 
@@ -42,32 +248,20 @@ fn is_placeholder(ch: char) -> bool {
     ch == '0' || ch == '#'
 }
 
-fn custom(
-    format: (&str, Option<&str>, Option<&str>),
-    stats: NumberComponents,
+fn apply_format(
+    format: &str,
+    components: NumberComponents,
     ops: &FormatOptions,
+    must_add_neg: bool,
 ) -> String {
-    let must_add_neg = stats.sign == Sign::Negative && format.1.is_none();
-
-    let format = match (&stats.sign, format.0, format.1, format.2) {
-        (Sign::Negative, _, Some(neg), _) => neg,
-        (Sign::Zero, _, _, Some(zero)) => zero,
-        _ => format.0,
-    };
-
     let (format_int, format_decimal) = if let Some(a) = format.split_once('.') {
         (a.0, a.1)
     } else {
         (format, "")
     };
 
-    let mut int_result = custom_int_part(format_int, &stats, ops);
-    let (decimal_result, has_carry) = custom_decimal_part(format_decimal, stats);
-
-    //round if necessary
-    if has_carry {
-        carry_the_one(&mut int_result, true);
-    }
+    let int_result = apply_format_int(format_int, &components, ops);
+    let decimal_result = apply_format_decimal(format_decimal, &components);
 
     let mut result = String::new();
     result.push_str(&int_result);
@@ -87,7 +281,7 @@ fn custom(
 ///Dont need to repeat exact pattern for entire number, it will write all significant digits
 /// it will remember thousand separators, and repeat the last pattern (e.g. every 3 or 2)
 /// it will output all other characters in format
-fn custom_int_part(formatint: &str, comps: &NumberComponents, ops: &FormatOptions) -> String {
+fn apply_format_int(formatint: &str, comps: &NumberComponents, ops: &FormatOptions) -> String {
     let mut result = String::new();
     let mut formatpre = formatint.chars().rev();
     //format pre (start from end)
@@ -97,7 +291,7 @@ fn custom_int_part(formatint: &str, comps: &NumberComponents, ops: &FormatOption
     let mut thousands_start = 0;
     let mut other_buffer = vec![];
     //hold other chars. we only output at end, or if there is another placeholder
-    for (counter, ch) in comps.pre.chars().rev().enumerate() {
+    for (counter, ch) in comps.int.chars().rev().enumerate() {
         for chf in formatpre.by_ref() {
             //check if thousands separator
             if chf == ',' {
@@ -168,12 +362,11 @@ fn custom_int_part(formatint: &str, comps: &NumberComponents, ops: &FormatOption
 ///Output number if there is one and pattern is # or 0
 /// Output 0 if there is no trailing numbers
 /// it will output all other characters in format
-fn custom_decimal_part(formatdecimal: &str, stats: NumberComponents) -> (String, bool) {
+fn apply_format_decimal(formatdecimal: &str, comps: &NumberComponents) -> String {
     let mut decimal_result = String::new();
     let mut formatpost = formatdecimal.chars();
     let mut last_f_ch;
-    let mut next_char = None;
-    for ch in stats.post.chars() {
+    for ch in comps.decimal.chars() {
         loop {
             if let Some(chf) = formatpost.next() {
                 if is_placeholder(chf) {
@@ -183,7 +376,6 @@ fn custom_decimal_part(formatdecimal: &str, stats: NumberComponents) -> (String,
                     decimal_result.push(chf);
                 }
             } else {
-                next_char = Some(ch);
                 last_f_ch = '\0';
                 break; //no more left
             }
@@ -196,17 +388,8 @@ fn custom_decimal_part(formatdecimal: &str, stats: NumberComponents) -> (String,
         }
     }
 
-    //do rounding if necessary
-    let mut has_carry = false;
-    if let Some(after) = next_char {
-        if (after as u8) - b'0' >= 5 {
-            has_carry = carry_the_one(&mut decimal_result, false);
-        }
-    }
-
     //get rid of trailing hashes,
     //since we are at the end of the input, we only want to display required zeros
-
     let mut no_trailing_hash = formatpost.collect::<Vec<char>>();
     if !no_trailing_hash.is_empty() {
         let mut i = no_trailing_hash.len() - 1;
@@ -229,92 +412,5 @@ fn custom_decimal_part(formatdecimal: &str, stats: NumberComponents) -> (String,
             other => decimal_result.push(other),
         }
     }
-    (decimal_result, has_carry)
-}
-
-///rounds if necessary
-/// TODO: any way we can do this smarter?
-/// We are assuming that each '0'-'9' is from the number,
-///  which may not be true, as it may come from the format (unlikely but possible)
-/// must insert = true for int part as we may need to add 1 to start, false for decimal part
-fn carry_the_one(input: &mut String, must_insert: bool) -> bool {
-    //we start at end, and add to each char which is a '0'-'9' until no more carry
-
-    let mut result = String::with_capacity(input.len());
-    let chars = input.chars().rev();
-    let mut has_carry = true;
-    let mut last_carry_pos = 0;
-    for (i, ch) in chars.enumerate() {
-        if has_carry && ('0'..='9').contains(&ch) {
-            let mut val = ch as u32 - '0' as u32;
-            val += 1;
-            if val == 10 {
-                result.insert(0, '0');
-                last_carry_pos = i + 1;
-            } else {
-                result.insert_str(0, &val.to_string());
-                has_carry = false;
-            }
-        } else {
-            result.insert(0, ch);
-        }
-    }
-    if has_carry && must_insert {
-        result.insert(result.len() - last_carry_pos, '1');
-        has_carry = false;
-    }
-    *input = result;
-    has_carry
-}
-
-enum FormatType {
-    Fixed { prec: u8 },  //F default 2
-    Number { prec: u8 }, //N default 2
-    Custom,
-}
-
-fn get_format_type(format: &(&str, Option<&str>, Option<&str>)) -> FormatType {
-    //if we have negative and/or zero then it is custom
-    if format.1.is_some() || format.2.is_some() {
-        return FormatType::Custom;
-    }
-
-    let format = format.0;
-
-    if format.is_empty() {
-        return FormatType::Custom;
-    }
-
-    if format.len() > 2 {
-        return FormatType::Custom;
-    }
-
-    let mut chars = format.chars();
-    let first = chars.next();
-    let second = chars.next();
-    let second_num: Option<u8> = if let Some(pre) = second {
-        if ((pre as u32) < b'0' as u32) || ((pre as u32) > b'9' as u32) {
-            None //not valid
-        } else {
-            Some(pre as u8 - b'0')
-        }
-    } else {
-        Some(2) //default
-    };
-
-    match (first, second_num) {
-        (Some('N') | Some('n'), Some(prec)) => FormatType::Number { prec },
-        (Some('F') | Some('f'), Some(prec)) => FormatType::Fixed { prec },
-        _ => FormatType::Custom,
-    }
-}
-
-fn get_pos_neg_zero_format(format: &str) -> (&str, Option<&str>, Option<&str>) {
-    let spl: Vec<&str> = format.split(';').collect();
-
-    match spl.len() {
-        1 => (format, None, None),
-        2 => (spl[0], Some(spl[1]), None),
-        _ => (spl[0], Some(spl[1]), Some(spl[2])),
-    }
+    decimal_result
 }

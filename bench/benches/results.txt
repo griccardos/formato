@@ -1,14 +1,20 @@
-group                     base/formato/               base/std/
------                     -------------               ---------
-f64 big decimal           4.15    610.1±1.59ns        1.00    147.0±1.21ns
-f64 big no decimal        6.73    476.2±2.66ns        1.00     70.7±0.04ns
-f64 small decimal         4.51    433.4±0.84ns        1.00     96.1±0.69ns
-f64 small no decimal      5.08    360.2±2.09ns        1.00     70.8±0.07ns
-no round                  5.34    551.3±0.05ns        1.00    103.3±0.07ns
-round                     9.51  1022.5±21.21ns        1.00    107.6±0.23ns
-usize big decimal         8.90    447.1±2.84ns        1.00     50.2±0.26ns
-usize big no decimal      10.76   444.6±2.75ns        1.00     41.3±0.19ns
-usize small decimal       8.63    397.7±1.40ns        1.00     46.1±0.04ns
-usize small no decimal    8.42    329.6±4.28ns        1.00     39.1±0.02ns
+Run with:
+cargo bench --bench=benchmarks -- --quick ; critcmp --target-dir=c:\temp\rust\target\  -g '\w+/(.*)' base
 
-4-11x slower than to_string()/format!()
+or without the -- --quick for more accurate
+
+
+group                     base/formato/                          base/std/
+-----                     -------------                          ---------
+f64 big decimal           4.11    592.5±1.13ns        ? ?/sec    1.00    144.0±0.97ns        ? ?/sec
+f64 big no decimal        5.09    475.8±1.62ns        ? ?/sec    1.00     93.4±0.04ns        ? ?/sec
+f64 small decimal         4.52    434.0±0.59ns        ? ?/sec    1.00     96.0±0.35ns        ? ?/sec
+f64 small no decimal      4.36    362.6±0.36ns        ? ?/sec    1.00     83.2±0.95ns        ? ?/sec
+no round                  7.12    709.6±1.91ns        ? ?/sec    1.00     99.6±0.18ns        ? ?/sec
+round                     6.34    672.5±4.64ns        ? ?/sec    1.00    106.0±0.01ns        ? ?/sec
+usize big decimal         8.53    440.0±0.25ns        ? ?/sec    1.00     51.6±0.41ns        ? ?/sec
+usize big no decimal      8.95    447.1±1.87ns        ? ?/sec    1.00     50.0±0.65ns        ? ?/sec
+usize small decimal       8.11    387.7±0.89ns        ? ?/sec    1.00     47.8±0.22ns        ? ?/sec
+usize small no decimal    7.04    322.9±2.06ns        ? ?/sec    1.00     45.9±0.27ns        ? ?/sec
+
+formato is about 4-9x slower than format! macro

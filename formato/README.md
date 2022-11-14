@@ -10,7 +10,7 @@ Allows you to specify location of thousands separator, number of decimals, diffe
 Similar to numerical formatting in Excel and C#
 
 
-## Simple examples
+### Simple examples
 ```rust
 use formato::{Formato,FormatOptions};
 assert_eq!("001", 1.formato("000"));
@@ -23,24 +23,6 @@ let ops=FormatOptions::default()
         .with_decimal(",");
 assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00",&ops));        
 ```
-See below for more examples
-
-## Roadmap and contributing
-This is still a very early release so there may be bugs. If you find any bugs, please open an issue, or create a PR. 
-There has been almost no performance tuning yet, first want to stabilise functionality.
-That being said, if there are any obvious wins, you are welcome to create a PR.
-
-#### Short term
-- Clean up code
-- Increase tests to find potential bugs
-- Quick performance wins
-- Stablise API
-
-#### Long term
-- Performance improvements
-
-## Examples
-
 ### Placeholders
 - "0" replace with digit if there is one otherwise 0
 - "#" replace with digit if there is one else ignore

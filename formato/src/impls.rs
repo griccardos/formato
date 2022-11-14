@@ -1,5 +1,5 @@
-use crate::calc::calc_format;
-use crate::comps::get_number_components;
+use crate::calc::formato_to_string;
+
 use crate::{FormatOptions, Formato};
 
 macro_rules! formato {
@@ -10,7 +10,7 @@ macro_rules! formato {
             }
 
             fn formato_ops(&self, format: &str, ops: &FormatOptions) -> String {
-                calc_format(get_number_components(self), format, ops)
+                formato_to_string(*self, format, ops)
             }
         }
     };
