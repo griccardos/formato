@@ -263,8 +263,7 @@ fn apply_format(
     let int_result = apply_format_int(format_int, &components, ops);
     let decimal_result = apply_format_decimal(format_decimal, &components);
 
-    let mut result = String::new();
-    result.push_str(&int_result);
+    let mut result = int_result;
     if !decimal_result.is_empty() {
         result.push_str(&ops.decimal);
         result.push_str(&decimal_result);
@@ -285,12 +284,10 @@ fn apply_format_int(formatint: &str, comps: &NumberComponents, ops: &FormatOptio
     let mut result = String::new();
     let mut formatpre = formatint.chars().rev();
     //format pre (start from end)
-    let mut last_f_ch = '\0';
-    //only #or0
+    let mut last_f_ch = '\0'; //only #or0
     let mut thousands = 0;
     let mut thousands_start = 0;
-    let mut other_buffer = vec![];
-    //hold other chars. we only output at end, or if there is another placeholder
+    let mut other_buffer = vec![]; //hold other chars. we only output at end, or if there is another placeholder
     for (counter, ch) in comps.int.chars().rev().enumerate() {
         for chf in formatpre.by_ref() {
             //check if thousands separator
