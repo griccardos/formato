@@ -14,6 +14,7 @@ Similar to numerical formatting in Excel and C#
 ## Simple examples
 ```rust
 use formato::{Formato,FormatOptions};
+pub use formato::duration::FormatoDuration;
 assert_eq!("001", 1.formato("000"));
 assert_eq!("1,234", 1234.formato("#,###"));
 assert_eq!("1,234.56", (1234.5632).formato("N2"));
@@ -27,8 +28,8 @@ assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00",&ops));
 */
 
 mod calc;
+pub mod duration;
 mod impls;
-
 /// Trait for number types to return formatted string
 pub trait Formato {
     /// Convert number to string.
