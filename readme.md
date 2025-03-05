@@ -28,13 +28,11 @@ See below for more examples
 ## Roadmap and contributing
 This is still a very early release so there may be bugs. If you find any bugs, please open an issue, or create a PR. 
 There has been almost no performance tuning yet, first want to stabilise functionality.
-That being said, if there are any obvious wins, you are welcome to create a PR.
 
 #### Short term
-- Clean up code
+- Better compatibility
 - Increase tests to find potential bugs
 - Quick performance wins
-- Stablise API
 
 #### Long term
 - Performance improvements
@@ -76,9 +74,6 @@ assert_eq!("1,234", 1234.formato("#,###"));
 
 //pattern is repeated for more significant digits
 assert_eq!("1,000,000", 1_000_000.formato("#,###"));
-
-//Indian notation - left most pattern is repeated for more significant digits
-assert_eq!("10,00,000", 1_000_000.formato("#,##,###"));
 ```
 
 ### Currency and other characters

@@ -62,7 +62,7 @@ fn custom_separators() {
     assert_eq!("0,001", 1.formato("0,000"));
     assert_eq!("001", 1.formato("#,000"));
     assert_eq!("1,000,000", 1_000_000.formato("#,###"));
-    assert_eq!("10,00,000", 1_000_000.formato("#,##,###")); //indian notation. this is different to c#. c# =1,000,000 formato=10,00,000
+    assert_eq!("1,000,000", 1_000_000.formato("#,##,###")); //no indian notation
 }
 
 #[test]
@@ -172,8 +172,7 @@ fn rounding() {
     assert_eq!("1,234.57", 1234.569.formato("N2")); //round
     assert_eq!("$ 9,999.99", 9999.991.formato("$ #,###.00")); //no
     assert_eq!("$ 10,000.00", 9999.996.formato("$ #,###.00")); //round
-    assert_eq!("$ h9e,l9l9o9.!9!9", 9999.991.formato("$ h#e,l#l#o#.!0!0")); //round
-    assert_eq!("$ h10e,l0l0o0.!0!0", 9999.996.formato("$ h#e,l#l#o#.!0!0")); //round
+
     assert_eq!("1.0", 0.999.formato("0.0#")); //round
     assert_eq!("0.91", 0.909.formato("0.0#")); //round
     assert_eq!("0.9", 0.909.formato("0.0")); //no round
@@ -201,9 +200,6 @@ fn readme() {
     assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00", &ops));
 
     assert_eq!("1,000,000", 1_000_000.formato("#,###"));
-
-    //Indian notation
-    assert_eq!("10,00,000", 1_000_000.formato("#,##,###"));
 
     //Currency
     assert_eq!("$ 1,234.00", 1234.formato("$ #,###.00"));
@@ -281,4 +277,65 @@ fn extremes() {
     assert_eq!("NaN", f64::NAN.formato("$ #,###.00"));
     assert_eq!("-inf", f64::NEG_INFINITY.formato("$ #,###.0"));
     assert_eq!("inf", f64::INFINITY.formato("$ #,###.0"));
+}
+
+#[test]
+fn perc() {
+    //0% or 0.00%
+    assert_eq!("123400%", 1234f32.formato("0%"));
+    assert_eq!("123400.00%", 1234f32.formato("0.00%"));
+    assert_eq!("1200%", 12f32.formato(r#"0%;"-"0%;0%"#));
+    assert_eq!("-1200%", (-12f32).formato(r#"0%;"-"0%;0%"#));
+}
+
+#[test]
+fn csharp_tests() {
+    assert_eq!("1,234.00", 1234f32.formato("#,0.00"));
+    assert_eq!("001,234", 1234f32.formato("000,000"));
+}
+
+#[test]
+///these differ from csharp
+fn csharp_deviations() {
+    //Console.WriteLine(9999.991.ToString("$ h#e,l#l#o#.!0!0"));
+    //$ h9,el9l9o9.!9!9
+    //why is the , before the el whereas we requested it between e and l
+    //we rather ignore all commas as they are a symbol of thousands
+    assert_eq!("$ h9el9l9o9.!9!9", 9999.991.formato("$ h#e,l#l#o#.!0!0")); //round
+    assert_eq!("$ h10el0l0o0.!0!0", 9999.996.formato("$ h#e,l#l#o#.!0!0")); //round
+}
+
+#[test]
+fn custom_numeric() {
+    //https://learn.microsoft.com/en-us/dotnet/standard/base-types/custom-numeric-format-strings
+
+    assert_eq!("1.2", 1.2f32.formato("#.##"));
+    assert_eq!("123", 123f32.formato("#####"));
+    assert_eq!("[12-34-56]", 123456f32.formato("[##-##-##]"));
+    assert_eq!("1234567890", 1234567890.formato("#"));
+    assert_eq!("(123) 456-7890", 1234567890.formato("(###) ###-####"));
+
+    assert_eq!("1.20", 1.2f32.formato("0.00"));
+    assert_eq!("01.20", 1.2f32.formato("00.00"));
+    assert_eq!("8.6%", 0.086f32.formato("0.##%"));
+
+    assert_eq!("1,234,567,890", 1234567890f64.formato("#,#"));
+    assert_eq!("1,235", 1234567890f64.formato("#,##0,,"));
+}
+
+#[test]
+fn thousands() {
+    use super::calc::check_if_thousands;
+    assert!(check_if_thousands("#,###"));
+    assert!(check_if_thousands("0,0"));
+    assert!(check_if_thousands("0hello,0"));
+    assert!(!check_if_thousands("0,b0"));
+    assert!(!check_if_thousands("0,❤0"));
+}
+
+#[test]
+fn trailingcomma() {
+    assert_eq!("1,235", 1234567890f64.formato("#,##0,,"));
+    assert_eq!("1,234", 1234567890.formato("#,##0,,"));
+    assert_eq!("1234568", 1234567890f64.formato("#,"));
 }

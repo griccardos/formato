@@ -27,7 +27,9 @@ assert_eq!("1 234,32", 1234.321.formato_ops("#,###.00",&ops));
 */
 
 mod calc;
+mod div1000;
 mod impls;
+mod mul100;
 
 /// Trait for number types to return formatted string
 pub trait Formato {
@@ -49,11 +51,13 @@ pub trait Formato {
     ///
     /// ## Custom symbols
     /// These are used together to build the format you require
-    /// - "0" replace with digit if there is one otherwise 0
-    /// - "#" replace with digit if there is one else nothing
-    /// - "." sets the decimal position (only the 1st found)
-    /// - "," sets the grouping location (repeats the last pattern found on int part. decimal part it acts as normal character)
-    /// - ";" optionally separate positive, negative, zero formats. e.g. 0;(0);-
+    /// - 0 replace with digit if there is one otherwise 0
+    /// - # replace with digit if there is one else nothing
+    /// - . sets the decimal position (only the 1st found)
+    /// - , sets the grouping location (repeats the last pattern found on int part. decimal part it acts as normal character)
+    /// - ; optionally separate positive, negative, zero formats. e.g. 0;(0);-
+    /// - % multiply by 100 and add % sign
+    /// - " any characters between quotes are output as is
     /// - all others characters are output as is
     ///
     /// ```rust

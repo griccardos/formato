@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
-use crate::FormatOptions;
+use crate::{div1000::Div1000, mul100::Mul100, FormatOptions};
 
-pub fn formato_to_string<T: Display>(num: T, format: &str, ops: &FormatOptions) -> String {
+pub fn formato_to_string<T>(mut num: T, format: &str, ops: &FormatOptions) -> String
+where
+    T: Display + Mul100 + Div1000,
+{
     let mut value = format!("{num}");
 
     //special cases dont have any formatting
@@ -21,9 +24,60 @@ pub fn formato_to_string<T: Display>(num: T, format: &str, ops: &FormatOptions) 
     let pos_neg_zero = get_pos_neg_zero_format(format);
     let must_add_neg = sign == Sign::Negative && pos_neg_zero.neg.is_none();
     let format_to_use = calc_format(pos_neg_zero, &sign);
+
+    percentage_multiply(&mut num, &mut value, &sign, &format_to_use);
+
+    trailing_comma_divide(&mut num, &mut value, &sign, &format_to_use);
+
     round(&mut value, &format_to_use);
     let comps = get_int_decimal_parts(&value);
     apply_format(&format_to_use, comps, ops, must_add_neg)
+}
+
+fn percentage_multiply<T: Display + Mul100>(
+    num: &mut T,
+    value: &mut String,
+    sign: &Sign,
+    format_to_use: &String,
+) {
+    //check for % and multiply by 100
+    let count_percentages = format_to_use.chars().filter(|&x| x == '%').count();
+    for _ in 0..count_percentages {
+        *num = num.mul100();
+    }
+    if count_percentages > 0 {
+        *value = format!("{num}");
+        if sign == &Sign::Negative {
+            *value = value.replace('-', "");
+        }
+    }
+}
+
+//count number of trailing commas without any placeholders after them
+fn trailing_comma_divide<T>(num: &mut T, value: &mut String, sign: &Sign, format_to_use: &String)
+where
+    T: Display + Mul100 + Div1000,
+{
+    let mut comma_count = 0;
+    for ch in format_to_use.chars().rev() {
+        if ch == ',' {
+            comma_count += 1
+        } else if is_placeholder(ch) {
+            break;
+        }
+    }
+
+    if comma_count == 0 {
+        return;
+    }
+
+    for _ in 0..comma_count {
+        *num = num.div1000();
+    }
+    *value = format!("{num}");
+    if sign == &Sign::Negative {
+        *value = value.replace('-', "");
+    }
 }
 
 struct NumberComponents {
@@ -260,7 +314,7 @@ fn apply_format(
         (format, "")
     };
 
-    let int_result = apply_format_int(format_int, &components, ops);
+    let int_result = apply_format_int_part(format_int, &components, ops);
     let decimal_result = apply_format_decimal(format_decimal, &components);
 
     let mut result = int_result;
@@ -278,29 +332,25 @@ fn apply_format(
 
 ///Output number if # or 0
 ///Dont need to repeat exact pattern for entire number, it will write all significant digits
-/// it will remember thousand separators, and repeat the last pattern (e.g. every 3 or 2)
 /// it will output all other characters in format
-fn apply_format_int(formatint: &str, comps: &NumberComponents, ops: &FormatOptions) -> String {
+fn apply_format_int_part(formatint: &str, comps: &NumberComponents, ops: &FormatOptions) -> String {
     let mut result = String::new();
     let mut formatpre = formatint.chars().rev();
     //format pre (start from end)
     let mut last_f_ch = '\0'; //only #or0
-    let mut thousands = 0;
-    let mut thousands_start = 0;
-    let mut other_buffer = vec![]; //hold other chars. we only output at end, or if there is another placeholder
-    for (counter, ch) in comps.int.chars().rev().enumerate() {
-        for chf in formatpre.by_ref() {
-            //check if thousands separator
-            if chf == ',' {
-                thousands = counter - thousands_start;
-                thousands_start = counter;
-                //must output buffer because we have ,
-                for ch in &other_buffer {
-                    result.insert(0, *ch);
-                }
-                other_buffer.clear();
 
-                result.insert_str(0, &ops.thousands);
+    //has_thousands is true if there is a  # or 0, then anything, then comma, then # or 0
+    let has_thousands = check_if_thousands(formatint);
+    let mut in_quotes = false;
+    let mut other_buffer = vec![]; //hold other chars. we only output at end, or if there is another placeholder
+    for (number_counter, ch) in comps.int.chars().rev().enumerate() {
+        for chf in formatpre.by_ref() {
+            if chf == '"' {
+                in_quotes = !in_quotes;
+            } else if in_quotes {
+                other_buffer.push(chf);
+            } else if chf == ',' {
+                //ignore thosands
             } else if !is_placeholder(chf) {
                 //fill in any non placeholders
                 other_buffer.push(chf);
@@ -314,10 +364,7 @@ fn apply_format_int(formatint: &str, comps: &NumberComponents, ops: &FormatOptio
                 break;
             }
         }
-        if thousands > 0
-            && (counter != thousands_start)
-            && ((counter - thousands_start) % thousands) == 0
-        {
+        if has_thousands && number_counter > 0 && number_counter % 3 == 0 {
             result.insert_str(0, &ops.thousands);
         }
 
@@ -355,12 +402,36 @@ fn apply_format_int(formatint: &str, comps: &NumberComponents, ops: &FormatOptio
     }
     result
 }
+/// thousand separators if:
+/// a placeholder sometime before, then anything, then comma, then a placeholder immediately after
+
+pub(crate) fn check_if_thousands(formatint: &str) -> bool {
+    let mut found_first = false;
+    for (i, ch) in formatint.chars().enumerate() {
+        if is_placeholder(ch) {
+            found_first = true;
+        }
+        if ch == ',' && found_first {
+            if i < formatint.len() - 1 {
+                if let Some(next) = formatint.chars().nth(i + 1) {
+                    if is_placeholder(next) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
 
 ///Output number if there is one and pattern is # or 0
 /// Output 0 if there is no trailing numbers
 /// it will output all other characters in format
 fn apply_format_decimal(formatdecimal: &str, comps: &NumberComponents) -> String {
     let mut decimal_result = String::new();
+
     let mut formatpost = formatdecimal.chars();
     let mut last_f_ch;
     for ch in comps.decimal.chars() {
