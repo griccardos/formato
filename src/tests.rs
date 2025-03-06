@@ -339,3 +339,11 @@ fn trailingcomma() {
     assert_eq!("1,234", 1234567890.formato("#,##0,,"));
     assert_eq!("1234568", 1234567890f64.formato("#,"));
 }
+#[test]
+fn quotes() {
+    assert_eq!("(1,234)", 1234.formato(r##""("#,###")""##));
+    assert_eq!(
+        "(1,234.00)",
+        (-1234f32).formato(r##"#,##0.00;"("#,##0.00")";"-"??"##)
+    );
+}

@@ -397,6 +397,7 @@ fn apply_format_int_part(formatint: &str, comps: &NumberComponents, ops: &Format
     for ch in formatpre {
         match ch {
             '0' | '#' => result.insert(0, '0'),
+            '"' => {} //ignore quotes for rest, it will be displayed as is
             other => result.insert(0, other),
         }
     }
@@ -477,6 +478,7 @@ fn apply_format_decimal(formatdecimal: &str, comps: &NumberComponents) -> String
     for ch in no_trailing_hash {
         match ch {
             '0' | '#' => decimal_result.push('0'),
+            '"' => {} //ignore quotes for rest, it will be displayed as is
             other => decimal_result.push(other),
         }
     }
